@@ -1,5 +1,7 @@
 module Counterpoint
 
+import Data.Vect
+
 Octave : Type
 Octave = Nat
 
@@ -49,59 +51,99 @@ data Result : Type where
   Failure : List BrokenRule -> Result
 
 combineResult : Result -> Result -> Result
-combineResult Perfection Perfection = Perfection
 combineResult (Failure xs) Perfection = Failure xs
 combineResult Perfection (Failure xs) = Failure xs
-combineResult (Failure xs) (Failure ys) = Failure $ xs ++ ys
+combineResult (Failure (x::xs)) (Failure ys) =
+  case combineResult (Failure xs) (Failure ys) of
+       Perfection => Failure [x]
+       Failure fs => Failure $ x :: fs
+combineResult (Failure []) (Failure ys) = Failure ys
+combineResult _ _ = Perfection
 infixl 3 `combineResult`
 
 Semigroup Result where
   (<+>) = combineResult
 
-consonantInterval : List (Note, Note) -> Result
-consonantInterval ((a, b) :: xs) =
-  if delta a b `elem` [0, 3, 4, 5, 7, 8, 9]
-     then Perfection
-     else Failure ["Not a consonant interval"]
-consonantInterval _ = Perfection
+consonantInterval : (n : Nat) -> List (Vect n Note) -> Result
+consonantInterval (S n) (xs :: _) = go (S n) xs where
+  checkInterval : (n : Nat) -> Note -> Vect n Note -> Result
+  checkInterval 0 _ [] = Perfection
+  checkInterval (S n) x (y :: xs) =
+    if delta x y `elem` (the (List Int) [0, 3, 4, 5, 7, 8, 9])
+       then checkInterval n x xs
+       else Failure ["Not a consonant interval"]
+  go : (n : Nat) -> Vect n Note -> Result
+  go 0 [] = Perfection
+  go (S n) (x :: xs) = checkInterval n x xs <+> go n xs
+consonantInterval _ [] = Perfection
+consonantInterval 0 _ = Perfection
 
-parallel5ths : List (Note, Note) -> Result
-parallel5ths ((a2, b2) :: (a1, b1) :: xs) =
-  if delta a2 b2 == 7 && delta a1 b1 == 7
-     then Failure ["Consecutive perfect 5ths"]
-     else Perfection
-parallel5ths _ = Perfection
+parallel5ths : (n : Nat) -> List (Vect n Note) -> Result
+parallel5ths (S n) ((x::xs) :: (y::ys) :: _) = go n x y xs ys
+  where
+    checkNotes : Note -> Note -> Note -> Note -> Result
+    checkNotes x1 y1 x2 y2 =
+      if delta x1 x2 == 7 && delta y1 y2 == 7
+         then Failure ["Consecutive perfect fifths"]
+         else Perfection
 
-parallelOctaves : List (Note, Note) -> Result
-parallelOctaves ((a2, b2) :: (a1, b1) :: xs) =
-  if delta a2 b2 == 0 && delta a1 b1 == 0 && a2 /= b2 && a1 /= b1
-     then Failure ["Consecutive octaves"]
-     else Perfection
-parallelOctaves _ = Perfection
+    go : (n : Nat) -> Note -> Note -> Vect n Note -> Vect n Note -> Result
+    go (S n) x1 y1 (x2 :: xs) (y2 :: ys) =
+      checkNotes x1 y1 x2 y2
+        <+> go n x1 y1 xs ys
+        <+> go n x2 y2 xs ys
+    go _ _ _ _ _ = Perfection
+parallel5ths _ _ = Perfection
 
-allRules : List (Note, Note) -> Result
-allRules ns = consonantInterval ns
-          <+> parallel5ths ns
-          <+> parallelOctaves ns
+parallelOctaves : (n : Nat) -> List (Vect n Note) -> Result
+parallelOctaves (S n) ((x::xs) :: (y::ys) :: _) = go n x y xs ys
+  where
+    checkNotes : Note -> Note -> Note -> Note -> Result
+    checkNotes x1 y1 x2 y2 =
+      if delta x1 x2 == 0 && delta y1 y2 == 0
+         then if x1 == x2 && y1 == y2
+              then Failure ["Consecutive unisons"]
+              else if x1 == x2 || y1 == y2
+                   then Perfection
+                   else Failure ["Consecutive octaves"]
+         else Perfection
 
-data CounterPoint : List (Note, Note) -> Result -> Type where
-  Start : CounterPoint [] Perfection
-  (:-) : (a : Note) -> (b : Note) -> CounterPoint ns rs
-       -> CounterPoint ((a, b) :: ns) (allRules ((a, b) :: ns) <+> rs)
+    go : (n : Nat) -> Note -> Note -> Vect n Note -> Vect n Note -> Result
+    go (S n) x1 y1 (x2 :: xs) (y2 :: ys) =
+      checkNotes x1 y1 x2 y2
+        <+> go n x1 y1 xs ys
+        <+> go n x2 y2 xs ys
+    go _ _ _ _ _ = Perfection
+parallelOctaves _ _ = Perfection
+
+allRules : (n : Nat) -> List (Vect n Note) -> Result
+allRules n ns = consonantInterval n ns
+            <+> parallel5ths n ns
+            <+> parallelOctaves n ns
+
+data CounterPoint : (n : Nat) -> List (Vect n Note) -> Result -> Type where
+  Start : CounterPoint n [] Perfection
+  (:-) :  CounterPoint n ns rs -> (notes : Vect n Note)
+       -> CounterPoint n (notes :: ns) (allRules n (notes :: ns) <+> rs)
 infixl 4 :-
 
 data SomeCounterPoint : Type where
-  MkSCP : CounterPoint ns Perfection -> SomeCounterPoint
+  MkSCP : CounterPoint n ns Perfection -> SomeCounterPoint
 
-(>>>) : a -> (a -> b) -> b
-(>>>) a f = f a
-infixl 3 >>>
+twoVoices : SomeCounterPoint
+twoVoices = MkSCP $
+           Start
+           :- [A ^ 5, E ^ 5]
+           :- [B ^ 5, Gb ^ 5]
+           :- [B ^ 5, C ^ 2]
+           :- [A ^ 6, A ^ 8]
+           :- [B ^ 6, B ^ 7]
 
-shit : SomeCounterPoint
-shit = MkSCP $ Start
-           >>> A ^ 5 :- E ^ 5
-           >>> B ^ 5 :- Gb ^ 5
-           >>> B ^ 5 :- C ^ 2
-           >>> A ^ 6 :- A ^ 8
-           >>> B ^ 6 :- B ^ 7
+threeVoices : SomeCounterPoint
+threeVoices = MkSCP $
+              Start
+              :- [C ^ 3 , E ^ 3, G ^ 3]
+              :- [A ^ 3 , C ^ 3, F ^ 3]
+              :- [Ab ^ 2, C ^ 3, F ^ 3]
+              :- [G ^ 2 , C ^ 3, E ^ 3]
 
