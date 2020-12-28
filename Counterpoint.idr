@@ -24,17 +24,17 @@ data NoteName : Type where
   Ab : NoteName
 
 noteVal : NoteName -> Nat
-noteVal A = 0
+noteVal A  = 0
 noteVal Bb = 1
-noteVal B = 2
-noteVal C = 3
+noteVal B  = 2
+noteVal C  = 3
 noteVal Db = 4
-noteVal D = 5
+noteVal D  = 5
 noteVal Eb = 6
-noteVal E = 7
-noteVal F = 8
+noteVal E  = 7
+noteVal F  = 8
 noteVal Gb = 9
-noteVal G = 10
+noteVal G  = 10
 noteVal Ab = 11
 
 (^) : NoteName -> Nat -> Note
@@ -54,6 +54,9 @@ combineResult (Failure xs) Perfection = Failure xs
 combineResult Perfection (Failure xs) = Failure xs
 combineResult (Failure xs) (Failure ys) = Failure $ xs ++ ys
 infixl 3 `combineResult`
+
+Semigroup Result where
+  (<+>) = combineResult
 
 consonantInterval : List (Note, Note) -> Result
 consonantInterval ((a, b) :: xs) =
@@ -77,16 +80,14 @@ parallelOctaves ((a2, b2) :: (a1, b1) :: xs) =
 parallelOctaves _ = Perfection
 
 allRules : List (Note, Note) -> Result
-allRules ns = consonantInterval ns `combineResult` parallel5ths ns
-                                   `combineResult` parallelOctaves ns
+allRules ns = consonantInterval ns
+          <+> parallel5ths ns
+          <+> parallelOctaves ns
 
 data CounterPoint : List (Note, Note) -> Result -> Type where
   Start : CounterPoint [] Perfection
-  Notes : (a : Note) -> (b : Note) -> CounterPoint ns rs
-       -> CounterPoint ((a, b) :: ns) (allRules ((a, b) :: ns) `combineResult` rs)
-
-(:-) : (a : Note) -> (b : Note) -> (CounterPoint ns rs -> CounterPoint ((a, b) :: ns) (allRules ((a, b) :: ns) `combineResult` rs))
-(:-) a b = Notes a b
+  (:-) : (a : Note) -> (b : Note) -> CounterPoint ns rs
+       -> CounterPoint ((a, b) :: ns) (allRules ((a, b) :: ns) <+> rs)
 infixl 4 :-
 
 data SomeCounterPoint : Type where
