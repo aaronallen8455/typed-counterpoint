@@ -13,39 +13,41 @@ Note : Type
 Note = Nat
 
 public export
-data NoteName : Type where
-  A  : NoteName
-  Bb : NoteName
-  B  : NoteName
-  C  : NoteName
-  Db : NoteName
-  D  : NoteName
-  Eb : NoteName
-  E  : NoteName
-  F  : NoteName
-  Gb : NoteName
-  G  : NoteName
-  Ab : NoteName
-
+A : Octave -> Note
+A  o = o * 12
 public export
-noteVal : NoteName -> Nat
-noteVal A  = 0
-noteVal Bb = 1
-noteVal B  = 2
-noteVal C  = 3
-noteVal Db = 4
-noteVal D  = 5
-noteVal Eb = 6
-noteVal E  = 7
-noteVal F  = 8
-noteVal Gb = 9
-noteVal G  = 10
-noteVal Ab = 11
-
+Bb : Octave -> Note
+Bb o = 1 + o * 12
 public export
-(^) : NoteName -> Octave -> Note
-(^) n o = noteVal n + 12 * o
-infixl 5 ^
+B : Octave -> Note
+B  o = 2 + o * 12
+public export
+C : Octave -> Note
+C  o = 3 + o * 12
+public export
+Db : Octave -> Note
+Db o = 4 + o * 12
+public export
+D : Octave -> Note
+D  o = 5 + o * 12
+public export
+Eb : Octave -> Note
+Eb o = 6 + o * 12
+public export
+E : Octave -> Note
+E  o = 7 + o * 12
+public export
+F : Octave -> Note
+F  o = 8 + o * 12
+public export
+Gb : Octave -> Note
+Gb o = 9 + o * 12
+public export
+G : Octave -> Note
+G  o = 10 + o * 12
+public export
+Ab : Octave -> Note
+Ab o = 11 + o * 12
 
 public export
 delta : Note -> Note -> Int
