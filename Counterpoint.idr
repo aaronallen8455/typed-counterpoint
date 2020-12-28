@@ -2,6 +2,7 @@ module Counterpoint
 
 import Data.Vect
 
+public export
 Octave : Type
 Octave = Nat
 
@@ -11,6 +12,7 @@ BrokenRule = String
 Note : Type
 Note = Nat
 
+public export
 data NoteName : Type where
   A  : NoteName
   Bb : NoteName
@@ -25,6 +27,7 @@ data NoteName : Type where
   G  : NoteName
   Ab : NoteName
 
+public export
 noteVal : NoteName -> Nat
 noteVal A  = 0
 noteVal Bb = 1
@@ -39,10 +42,12 @@ noteVal Gb = 9
 noteVal G  = 10
 noteVal Ab = 11
 
-(^) : NoteName -> Nat -> Note
+public export
+(^) : NoteName -> Octave -> Note
 (^) n o = noteVal n + 12 * o
 infixl 5 ^
 
+public export
 delta : Note -> Note -> Int
 delta a b = abs (cast a - cast b) `mod` 12
 
@@ -50,6 +55,7 @@ data Result : Type where
   Perfection : Result
   Failure : List BrokenRule -> Result
 
+public export
 combineResult : Result -> Result -> Result
 combineResult (Failure xs) Perfection = Failure xs
 combineResult Perfection (Failure xs) = Failure xs
@@ -59,11 +65,11 @@ combineResult (Failure (x::xs)) (Failure ys) =
        Failure fs => Failure $ x :: fs
 combineResult (Failure []) (Failure ys) = Failure ys
 combineResult _ _ = Perfection
-infixl 3 `combineResult`
 
 Semigroup Result where
   (<+>) = combineResult
 
+public export
 consonantInterval : (n : Nat) -> List (Vect n Note) -> Result
 consonantInterval (S n) (xs :: _) = go (S n) xs where
   checkInterval : (n : Nat) -> Note -> Vect n Note -> Result
@@ -78,6 +84,7 @@ consonantInterval (S n) (xs :: _) = go (S n) xs where
 consonantInterval _ [] = Perfection
 consonantInterval 0 _ = Perfection
 
+public export
 parallel5ths : (n : Nat) -> List (Vect n Note) -> Result
 parallel5ths (S n) ((x::xs) :: (y::ys) :: _) = go n x y xs ys
   where
@@ -95,6 +102,7 @@ parallel5ths (S n) ((x::xs) :: (y::ys) :: _) = go n x y xs ys
     go _ _ _ _ _ = Perfection
 parallel5ths _ _ = Perfection
 
+public export
 parallelOctaves : (n : Nat) -> List (Vect n Note) -> Result
 parallelOctaves (S n) ((x::xs) :: (y::ys) :: _) = go n x y xs ys
   where
@@ -116,34 +124,20 @@ parallelOctaves (S n) ((x::xs) :: (y::ys) :: _) = go n x y xs ys
     go _ _ _ _ _ = Perfection
 parallelOctaves _ _ = Perfection
 
+public export
 allRules : (n : Nat) -> List (Vect n Note) -> Result
 allRules n ns = consonantInterval n ns
             <+> parallel5ths n ns
             <+> parallelOctaves n ns
 
+public export
 data CounterPoint : (n : Nat) -> List (Vect n Note) -> Result -> Type where
   Start : CounterPoint n [] Perfection
-  (:-) :  CounterPoint n ns rs -> (notes : Vect n Note)
-       -> CounterPoint n (notes :: ns) (allRules n (notes :: ns) <+> rs)
-infixl 4 :-
+  (|>) : CounterPoint n ns rs -> (notes : Vect n Note)
+      -> CounterPoint n (notes :: ns) (allRules n (notes :: ns) <+> rs)
+infixl 4 |>
 
+public export
 data SomeCounterPoint : Type where
   MkSCP : CounterPoint n ns Perfection -> SomeCounterPoint
-
-twoVoices : SomeCounterPoint
-twoVoices = MkSCP $
-           Start
-           :- [A ^ 5, E ^ 5]
-           :- [B ^ 5, Gb ^ 5]
-           :- [B ^ 5, C ^ 2]
-           :- [A ^ 6, A ^ 8]
-           :- [B ^ 6, B ^ 7]
-
-threeVoices : SomeCounterPoint
-threeVoices = MkSCP $
-              Start
-              :- [C ^ 3 , E ^ 3, G ^ 3]
-              :- [A ^ 3 , C ^ 3, F ^ 3]
-              :- [Ab ^ 2, C ^ 3, F ^ 3]
-              :- [G ^ 2 , C ^ 3, E ^ 3]
 
