@@ -12,8 +12,9 @@ twoVoices = MkSCP $
             |> [B 5, C 2]
             |> [A 6, A 8]
             |> [B 6, B 7]
+            |> [C 6, G 7]
 
--- this one is perfect!
+-- no mistakes
 threeVoices : SomeCounterPoint
 threeVoices = MkSCP $
               Start
